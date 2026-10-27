@@ -1,35 +1,55 @@
 import { spawn, execFileSync } from "node:child_process";
 import { once } from "node:events";
+import { fileURLToPath } from "node:url";
 import FFT from "fft.js";
 
-const [imagePath, audioPath, outputPath = "output.mp4", color = "#E8E8E8"] =
-  process.argv.slice(2);
+process.loadEnvFile(fileURLToPath(new URL("../.env", import.meta.url)));
 
-if (!imagePath || !audioPath) {
-  console.error(
-    "Usage: node src/cli.js <image> <audio> [output.mp4] [#RRGGBB]",
-  );
-  process.exit(1);
+function getConfig(name) {
+  const value = process.env[name];
+  const number = Number(value);
+
+  if (value === undefined || value.trim() === "" || !Number.isFinite(number)) {
+    throw new Error(`Environment variable ${name} must be a number`);
+  }
+
+  return number;
 }
 
+function getRequiredConfig(name) {
+  const value = process.env[name];
+  console.log(name, value);
+
+  if (value === undefined || value.trim() === "") {
+    throw new Error(`Environment variable ${name} is required`);
+  }
+
+  return value;
+}
+
+const imagePath = getRequiredConfig("IMAGE_PATH");
+const audioPath = getRequiredConfig("AUDIO_PATH");
+const outputPath = getRequiredConfig("OUTPUT_PATH");
+const color = getRequiredConfig("BAR_COLOR");
+
 // Output video settings
-const VIDEO_W = 1280;
-const VIDEO_H = 720;
-const FPS = 30;
+const VIDEO_W = getConfig("VIDEO_W");
+const VIDEO_H = getConfig("VIDEO_H");
+const FPS = getConfig("FPS");
 
 // Visualizer settings
-const W = 420;
-const H = 90;
-const BAR_COUNT = 100;
-const BAR_WIDTH = 2;
-const BAR_GAP = 1;
-const BASELINE = 65;
-const MAX_BAR_HEIGHT = 65;
-const BOTTOM = 20;
+const W = getConfig("W");
+const H = getConfig("H");
+const BAR_COUNT = getConfig("BAR_COUNT");
+const BAR_WIDTH = getConfig("BAR_WIDTH");
+const BAR_GAP = getConfig("BAR_GAP");
+const BASELINE = getConfig("BASELINE");
+const MAX_BAR_HEIGHT = getConfig("MAX_BAR_HEIGHT");
+const BOTTOM = getConfig("BOTTOM");
 
 // Audio analysis settings
-const SAMPLE_RATE = 22050;
-const FFT_SIZE = 2048;
+const SAMPLE_RATE = getConfig("SAMPLE_RATE");
+const FFT_SIZE = getConfig("FFT_SIZE");
 
 function parseColor(hex) {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex);
@@ -45,12 +65,12 @@ const spectrum = fft.createComplexArray();
 const input = new Array(FFT_SIZE).fill(0);
 const binCount = FFT_SIZE / 2;
 
-const MIN_FREQ = 30;
-const MAX_FREQ = 10000;
-const SENSITIVITY = 200;
+const MIN_FREQ = getConfig("MIN_FREQ");
+const MAX_FREQ = getConfig("MAX_FREQ");
+const SENSITIVITY = getConfig("SENSITIVITY");
 
-const ATTACK = 0.9;
-const RELEASE = 0.6;
+const ATTACK = getConfig("ATTACK");
+const RELEASE = getConfig("RELEASE");
 
 let smoothedHeights = new Array(BAR_COUNT).fill(0);
 
